@@ -44,7 +44,7 @@ For clarity, if you create a modified version of Mura CMS, you are not obligated
 modified version; it is your choice whether to do so, or to make such modified version available under the GNU General Public License
 version 2 without this exception.  You may, if you choose, apply this exception to your own modified versions of Mura CMS.
 --->
-<cfcomponent extends="mura.cfobject" output="false">
+<cfcomponent extends="mura.cfobject" output="false" hint="This provides frontend request lifecycle functionality">
 
 <cffunction name="forcePathDirectoryStructure" output="false" access="remote">
 <cfargument name="cgi_path">
@@ -173,7 +173,7 @@ version 2 without this exception.  You may, if you choose, apply this exception 
 		<cfif arguments.isAdmin>
 			<cfreturn "--none--">
 		<cfelse>
-			<cfset getBean('contentRenderer').redirect("#application.configBean.getContext()#/admin/")>
+			<cfset getBean('contentRenderer').redirect("#application.configBean.getContext()##variables.configBean.getAdminDir()#/")>
 		</cfif>
 	<cfelse>
 		<cfreturn rsSites.siteID>
@@ -208,6 +208,8 @@ version 2 without this exception.  You may, if you choose, apply this exception 
 			<cfif find(".",last)>
 				<cfif last eq 'index.json'>
 		 			<cfset request.returnFormat="JSON">
+				<cfelseif last eq 'index.amp'>
+		 			<cfset request.returnFormat="AMP">
 		 		</cfif>
 				<cfset indexFile=last>
 			</cfif>
@@ -372,7 +374,7 @@ version 2 without this exception.  You may, if you choose, apply this exception 
 	</cfloop>
 
 	<cfif listFirst(cgi.http_host,":") eq application.configBean.getAdminDomain()>
-		<cfset getBean('contentRenderer').redirect("#application.configBean.getContext()#/admin/")>
+		<cfset getBean('contentRenderer').redirect("#application.configBean.getContext()##variables.configBean.getAdminDir()#/")>
 	<cfelse>
 		<cfset site=application.settingsManager.getSite(rsSites.siteID)>
 		<cfset getBean('contentRenderer').redirect("#site.getWebPath(complete=1)##site.getContentRenderer().getURLStem(site.getSiteID(),'')#")>
@@ -540,7 +542,7 @@ version 2 without this exception.  You may, if you choose, apply this exception 
 		<cfelse>
 			<cfreturn getBean('settingsManager').getSite('default').getApi('json','v1').processRequest(arguments.path)>
 		</cfif>
-	<cfelseif isDefined('url.siteid') and (left(arguments.path,len(feedendpoint)) eq feedendpoint or left(arguments.path,len(legacyfeedendpoint)) eq legacyfeedendpoint)>
+	<cfelseif isDefined('url.feedid') and (left(arguments.path,len(feedendpoint)) eq feedendpoint or left(arguments.path,len(legacyfeedendpoint)) eq legacyfeedendpoint)>
 		<cfif listLen(arguments.path,'/') gte 4>
 			<cfreturn getBean('settingsManager').getSite(listGetAt(arguments.path,4,'/')).getApi('feed','v1').processRequest(arguments.path)>
 		<cfelseif isDefined('form.siteid')>
@@ -550,7 +552,7 @@ version 2 without this exception.  You may, if you choose, apply this exception 
 		<cfelse>
 			<cfreturn getBean('settingsManager').getSite('default').getApi('feed','v1').processRequest(arguments.path)>
 		</cfif>
-	<cfelseif left(arguments.path,len(variationendpoint)) eq variationendpoint and getBean('configBean').getValue(property='variations',defaultValue=false)>
+	<cfelseif isDefined('url.siteid') and left(arguments.path,len(variationendpoint)) eq variationendpoint and getBean('configBean').getValue(property='variations',defaultValue=false)>
 		<cfreturn new mura.executor().execute('/mura/client/api/resource/variation.js.cfm')>
 	<cfelseif isDefined('url.emailid') and left(path,len(emailendpoint)) eq emailendpoint>
 		<cfset application.emailManager.track(url.emailid,url.email,'emailOpen')>

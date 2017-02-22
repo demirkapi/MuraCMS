@@ -89,6 +89,17 @@
 	            return this;
 	        },
 
+			/**
+			 * contentPoolID - Sets items per page
+			 *
+			 * @param  {number} contentPoolID Items per page
+			 * @return {Mura.Feed}              Self
+			 */
+			contentPoolID:function(contentPoolID){
+	            this.queryString+='&contentpoolid=' + encodeURIComponent(contentPoolID);
+				return this;
+	        },
+
 	        /**
 	         * where - Optional method for starting query chain
 	         *
@@ -145,6 +156,9 @@
 	         * @return {Mura.Feed}          Self
 	         */
 	        isEQ:function(criteria){
+				if(typeof criteria == 'undefined' || criteria=='' || criteria==null){
+					criteria='null';
+				}
 	            this.queryString+=encodeURIComponent(criteria);
 				return this;
 	        },
@@ -156,6 +170,9 @@
 	         * @return {Mura.Feed}          Self
 	         */
 	        isNEQ:function(criteria){
+				if(typeof criteria == 'undefined' || criteria=='' || criteria==null){
+					criteria='null';
+				}
 	            this.queryString+='neq^' + encodeURIComponent(criteria);
 				return this;
 	        },
@@ -167,6 +184,9 @@
 	         * @return {Mura.Feed}          Self
 	         */
 	        isLT:function(criteria){
+				if(typeof criteria == 'undefined' || criteria=='' || criteria==null){
+					criteria='null';
+				}
 	            this.queryString+='lt^' + encodeURIComponent(criteria);
 				return this;
 	        },
@@ -178,6 +198,9 @@
 	         * @return {Mura.Feed}          Self
 	         */
 	        isLTE:function(criteria){
+				if(typeof criteria == 'undefined' || criteria=='' || criteria==null){
+					criteria='null';
+				}
 	            this.queryString+='lte^' + encodeURIComponent(criteria);
 				return this;
 	        },
@@ -189,6 +212,9 @@
 	         * @return {Mura.Feed}          Self
 	         */
 	        isGT:function(criteria){
+				if(typeof criteria == 'undefined' || criteria=='' || criteria==null){
+					criteria='null';
+				}
 	            this.queryString+='gt^' + encodeURIComponent(criteria);
 				return this;
 	        },
@@ -200,6 +226,9 @@
 	         * @return {Mura.Feed}          Self
 	         */
 	        isGTE:function(criteria){
+				if(typeof criteria == 'undefined' || criteria=='' || criteria==null){
+					criteria='null';
+				}
 	            this.queryString+='gte^' + encodeURIComponent(criteria);
 				return this;
 	        },
@@ -320,6 +349,16 @@
 			 */
 			itemsPerPage:function(itemsPerPage){
 	            this.queryString+='&itemsPerPage=' + encodeURIComponent(itemsPerPage);
+				return this;
+	        },
+
+			/**
+			 * pageIndex - Sets items per page
+			 *
+			 * @param  {number} pageIndex page to start at
+			 */
+			pageIndex:function(pageIndex){
+	            this.queryString+='&pageIndex=' + encodeURIComponent(pageIndex);
 				return this;
 	        },
 

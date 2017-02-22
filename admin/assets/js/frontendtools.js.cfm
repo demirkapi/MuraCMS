@@ -27,14 +27,14 @@
 	<cfif len($.globalConfig('admindomain'))>
 		var adminDomain="#$.globalConfig('admindomain')#";
 		var adminProtocal=<cfif application.configBean.getAdminSSL() or application.utility.isHTTPS()>"https://";<cfelse>"http://"</cfif>;
-		var adminProxyLoc=adminProtocal + adminDomain + "#$.globalConfig('serverPort')##$.globalConfig('context')#/admin/assets/js/porthole/proxy.html";
-		var adminLoc=adminProtocal + adminDomain + "#$.globalConfig('serverPort')##$.globalConfig('context')#/admin/";
+		var adminProxyLoc=adminProtocal + adminDomain + "#$.globalConfig('serverPort')##$.globalConfig('context')##$.globalConfig('adminDir')#/assets/js/porthole/proxy.html";
+		var adminLoc=adminProtocal + adminDomain + "#$.globalConfig('serverPort')##$.globalConfig('context')##$.globalConfig('adminDir')#/";
 		var frontEndProxyLoc= location.protocol + "//" + location.hostname + "#$.globalConfig('serverPort')#";
 	<cfelse>
 		var adminDomain="";
 		var adminProtocal="";
-		var adminProxyLoc="#$.globalConfig('context')#/admin/assets/js/porthole/proxy.html";
-		var adminLoc="#$.globalConfig('context')#/admin/";
+		var adminProxyLoc="#$.globalConfig('context')##$.globalConfig('adminDir')#/assets/js/porthole/proxy.html";
+		var adminLoc="#$.globalConfig('context')##$.globalConfig('adminDir')#/";
 		var frontEndProxyLoc="";
 	</cfif>
 	var onAdminMessage=function(messageEvent){
@@ -80,6 +80,8 @@
 			} else if(parameters["cmd"] == "requestObjectParams"){
 				var item=Mura('[data-instanceid="' + parameters["instanceid"] + '"]');
 				var data=item.data();
+
+				delete data.runtime;
 
 				if(item.hasClass('mura-body-object')){
 					data.isbodyobject=true;
@@ -133,7 +135,7 @@
 
 						for(var p in currentdata){
 							if(currentdata.hasOwnProperty(p)){
-								if(!(p=='inited' || p=='objecticonclass' || p=='async' || p=='instanceid' || p=='object' || p=='objectname' || p=='objectid' ) && typeof parameters.params[p] == 'undefined' ){
+								if(!(p=='inited' || p=='objecticonclass' || p=='async' || p=='instanceid' || p=='object' || p=='objectname' || p=='objectid') && typeof parameters.params[p] == 'undefined' ){
 									item.removeAttr('data-' + p);
 								}
 							}
@@ -1382,6 +1384,7 @@
 									delete params['async'];
 									delete params['forcelayout'];
 									delete params['isbodyobject'];
+									delete params['runtime'];
 
 									if(!item.data('objectname')){
 										item.data('objectname',item.data('object'));

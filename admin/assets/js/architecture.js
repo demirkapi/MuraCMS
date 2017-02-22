@@ -1420,6 +1420,7 @@ buttons: {
 					setToolTips("#gridContainer");
 					if(r.perm.toLowerCase() == "editor" && r.sortby.toLowerCase() == 'orderno') {
 						$("#sortableKids").sortable({
+							helper:'clone',
 							stop: function(event, ui) {
 								stripe('stripe');
 								siteManager.setAsSorted();
@@ -2700,7 +2701,7 @@ buttons: {
 	updateAvailableObject: function() {
 		var availableObjectParams = {};
 
-		$(".objectParam").each(
+		$(".objectParam, .objectparam").each(
 
 		function() {
 			var item = $(this);
@@ -2838,7 +2839,7 @@ buttons: {
 
 	initConfiguratorParams: function() {
 		this.updateAvailableObject();
-		$(".objectParam").bind("change", function() {
+		$(".objectParam, .objectparam").bind("change", function() {
 			siteManager.updateAvailableObject();
 		});
 	},
@@ -3233,7 +3234,7 @@ buttons: {
 		siteManager.frontEndProxyListeners.push(
 			{cmd:'setObjectParams',
 			fn:function(params){
-					$(".objectParam").each(function(){
+					$(".objectParam, .objectparam").each(function(){
 						var item=$(this);
 
 						var p=item.attr('name').toLowerCase();

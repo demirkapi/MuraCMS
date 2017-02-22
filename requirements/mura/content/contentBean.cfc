@@ -44,7 +44,7 @@ For clarity, if you create a modified version of Mura CMS, you are not obligated
 modified version; it is your choice whether to do so, or to make such modified version available under the GNU General Public License
 version 2 without this exception.  You may, if you choose, apply this exception to your own modified versions of Mura CMS.
 --->
-<cfcomponent extends="mura.bean.beanExtendable" entityName="content" table="tcontent" output="false">
+<cfcomponent extends="mura.bean.beanExtendable" entityName="content" table="tcontent" output="false" hint="This provides content functionality">
 
 <cfproperty name="contentHistID" fieldtype="id" type="string" default="" required="true" comparable="false"/>
 <cfproperty name="contentID" type="string" default="" required="true" comparable="false"/>
@@ -869,7 +869,10 @@ version 2 without this exception.  You may, if you choose, apply this exception 
 			<cfif arguments.displayInterval.end eq 'on'
 			and isDefined('arguments.displayInterval.endon')
 			and isDate(arguments.displayInterval.endon)>
-				<cfset setValue('displayStop',arguments.displayInterval.end)>
+				<cfif not isDate(getValue('displayStop'))
+				or dateFormat(getValue('displayStop'),'yyyymmdd') neq dateFormat(arguments.displayInterval.endon,'yyyymmdd')>
+					<cfset setValue('displayStop',arguments.displayInterval.endon)>
+				</cfif>
 			<cfelseif arguments.displayInterval.end eq 'after'
 				and isDefined('arguments.displayInterval.endafter')
 				and isNumeric(arguments.displayInterval.endafter)

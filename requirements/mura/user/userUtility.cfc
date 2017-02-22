@@ -44,7 +44,7 @@ For clarity, if you create a modified version of Mura CMS, you are not obligated
 modified version; it is your choice whether to do so, or to make such modified version available under the GNU General Public License
 version 2 without this exception.  You may, if you choose, apply this exception to your own modified versions of Mura CMS.
 --->
-<cfcomponent extends="mura.cfobject" output="false">
+<cfcomponent extends="mura.cfobject" output="false" hint="This provide user specific utility methods">
 
 <cffunction name="init" output="false">
 	<cfargument name="configBean" type="any" required="yes"/>
@@ -335,14 +335,14 @@ version 2 without this exception.  You may, if you choose, apply this exception 
 		</cfquery>
 
 		<cfif isDefined('cookie.userid') and cookie.userid neq rsuser.userid>
-			<cfset structDelete(cookie,"userid")>
-			<cfset structDelete(cookie,"userhash")>
+			<cfset variables.globalUtility.deleteCookie(name="userHash")>
+			<cfset variables.globalUtility.deleteCookie(name="userid")>
 		</cfif>
 
 		<cfset variables.globalUtility.logEvent("UserID:#rsuser.userid# Name:#rsuser.fname# #rsuser.lname# logged in at #now()#","mura-users","Information",true) />
 		<cfif variables.configBean.getValue(property='rotateSessions',defaultValue='false')>
 			<cfset sessionRotate()>
-			<cfset getBean('utility').setSessionCookies()>
+			<cfset variables.globalUtility.setSessionCookies()>
 		</cfif>
 	</cfif>
 
@@ -517,7 +517,7 @@ version 2 without this exception.  You may, if you choose, apply this exception 
 	</cfif>
 
 	<cfset returnURL="#protocol##urlBase##site.getContentRenderer().getURLStem(site.getSiteID(),returnID)#">
-	<cfset editProfileURL =protocol & urlBase & "/admin/?muraAction=cEditProfile.edit">
+	<cfset editProfileURL =protocol & urlBase & "#variables.configBean.getAdminDir()#/?muraAction=cEditProfile.edit">
 
 </cfif>
 
@@ -786,6 +786,7 @@ Thanks for using #contactName#</cfoutput>
 			<cfset var user=redirect.getUser()>
 			<cfif user.exists()>
 				<cfset user.login()>
+				<cfset redirect.delete()>
 			</cfif>
 			<cfset structDelete(session,"siteArray")>
 		</cfif>

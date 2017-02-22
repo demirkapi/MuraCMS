@@ -44,7 +44,7 @@ For clarity, if you create a modified version of Mura CMS, you are not obligated
 modified version; it is your choice whether to do so, or to make such modified version available under the GNU General Public License
 version 2 without this exception.  You may, if you choose, apply this exception to your own modified versions of Mura CMS.
 --->
-<cfcomponent extends="mura.cfobject" output="false">
+<cfcomponent extends="mura.cfobject" output="false" hint="This provides content feed gateway queries">
 
 <cffunction name="init" output="false">
 	<cfargument name="configBean" type="any" required="yes" />
@@ -121,7 +121,7 @@ version 2 without this exception.  You may, if you choose, apply this exception 
 	<cfset var doTags =false />
 	<cfset var openGrouping =false />
 	<cfset var dbType=variables.configBean.getDbType() />
-	<cfset var sortOptions="menutitle,title,lastupdate,releasedate,orderno,displayStart,created,rating,comment,credits,type,subtype">
+	<cfset var sortOptions="menutitle,title,lastupdate,releasedate,orderno,displayStart,created,expires,rating,comment,credits,type,subtype">
 	<cfset var isExtendedSort=(not listFindNoCase(sortOptions,arguments.feedBean.getSortBy()))>
 	<cfset var nowAdjusted="">
 	<cfset var blockFactor=arguments.feedBean.getNextN()>
@@ -1181,7 +1181,7 @@ version 2 without this exception.  You may, if you choose, apply this exception 
 							</cfif>
 						<cfelse>
 							<cfswitch expression="#arguments.feedBean.getSortBy()#">
-								<cfcase value="menutitle,title,lastupdate,releasedate,orderno,displaystart,displaystop,created,credits,type,subtype">
+								<cfcase value="menutitle,title,lastupdate,releasedate,orderno,displaystart,displaystop,created,expires,credits,type,subtype">
 									<cfif dbType neq "oracle" or listFindNoCase("orderno,releaseDate,lastUpdate,created,displayStart,displayStop",arguments.feedBean.getSortBy())>
 										tcontent.#arguments.feedBean.getSortBy()# #arguments.feedBean.getSortDirection()#
 									<cfelse>

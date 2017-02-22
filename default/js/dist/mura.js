@@ -87,6 +87,62 @@ if (!Object.keys) {
 	};
 })(Window.prototype, HTMLDocument.prototype, Element.prototype, "addEventListener", "removeEventListener", "dispatchEvent", []);
 
+// Production steps of ECMA-262, Edition 5, 15.4.4.21
+// Reference: http://es5.github.io/#x15.4.4.21
+// https://tc39.github.io/ecma262/#sec-array.prototype.reduce
+if (!Array.prototype.reduce) {
+  Array.prototype.reduce=function(callback) {
+      if (this === null) {
+        throw new TypeError('Array.prototype.reduce called on null or undefined');
+      }
+      if (typeof callback !== 'function') {
+        throw new TypeError(callback + ' is not a function');
+      }
+
+      // 1. Let O be ? ToObject(this value).
+      var o = Object(this);
+
+      // 2. Let len be ? ToLength(? Get(O, "length")).
+      var len = o.length >>> 0;
+
+      // Steps 3, 4, 5, 6, 7
+      var k = 0;
+      var value;
+
+      if (arguments.length == 2) {
+        value = arguments[1];
+      } else {
+        while (k < len && !(k in o)) {
+          k++;
+        }
+
+        // 3. If len is 0 and initialValue is not present, throw a TypeError exception.
+        if (k >= len) {
+          throw new TypeError('Reduce of empty array with no initial value');
+        }
+        value = o[k++];
+      }
+
+      // 8. Repeat, while k < len
+      while (k < len) {
+        // a. Let Pk be ! ToString(k).
+        // b. Let kPresent be ? HasProperty(O, Pk).
+        // c. If kPresent is true, then
+        //    i. Let kValue be ? Get(O, Pk).
+        //    ii. Let accumulator be ? Call(callbackfn, undefined, « accumulator, kValue, k, O »).
+        if (k in o) {
+          value = callback(value, o[k], k, o);
+        }
+
+        // d. Increase k by 1.
+        k++;
+      }
+
+      // 9. Return accumulator.
+      return value;
+  }
+}
+
 if (!Array.prototype.forEach) {
 
   Array.prototype.forEach = function(callback, thisArg) {
@@ -957,7 +1013,6 @@ if (!Array.prototype.map) {
 
     lib$es6$promise$promise$$Promise.prototype = {
       constructor: lib$es6$promise$promise$$Promise,
-
     /*
       The primary way of interacting with a promise is through its `then` method,
       which registers callbacks to receive either a promise's eventual value or the
@@ -1172,8 +1227,7 @@ if (!Array.prototype.map) {
         }
 
         return child;
-      },
-
+    },
     /*
       `catch` is simply sugar for `then(undefined, onRejection)` which makes it the same
       as the catch block of a try/catch statement.
@@ -1201,10 +1255,12 @@ if (!Array.prototype.map) {
       Useful for tooling.
       @return {Promise}
     */
-      'catch': function(onRejection) {
+      'catch':function(onRejection) {
         return this.then(null, onRejection);
       }
-    };
+  };
+
+
     function lib$es6$promise$polyfill$$polyfill() {
       var local;
 
@@ -2949,7 +3005,11 @@ return /******/ (function(modules) { // webpackBootstrap
 
 	    for ( var i = 0; ret[i]; i++ ) {
 	      if ( scripts && nodeName( ret[i], "script" ) && (!ret[i].type || ret[i].type.toLowerCase() === "text/javascript") ) {
-	            scripts.push( ret[i].parentNode ? ret[i].parentNode.removeChild( ret[i] ) : ret[i] );
+                if(ret[i].src){
+                    scripts.push(ret[i]);
+                } else {
+                    scripts.push( ret[i].parentNode ? ret[i].parentNode.removeChild( ret[i] ) : ret[i] );
+                }
 	        } else if(ret[i].nodeType==1 || ret[i].nodeType==9 || ret[i].nodeType==11){
 	        	evalScripts(ret[i]);
 	        }
@@ -2965,19 +3025,24 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
   	function evalScript(el) {
-	    var data = ( el.text || el.textContent || el.innerHTML || "" );
+        if(el.src){
+            Mura.loader().load(el.src);
+            Mura(el).remove();
+        } else {
+    	    var data = ( el.text || el.textContent || el.innerHTML || "" );
 
-	    var head = document.getElementsByTagName("head")[0] || document.documentElement,
-	    script = document.createElement("script");
-	    script.type = "text/javascript";
-	    //script.appendChild( document.createTextNode( data ) );
-		script.text=data;
-	    head.insertBefore( script, head.firstChild );
-	    head.removeChild( script );
+    	    var head = document.getElementsByTagName("head")[0] || document.documentElement,
+    	    script = document.createElement("script");
+    	    script.type = "text/javascript";
+    	    //script.appendChild( document.createTextNode( data ) );
+    		script.text=data;
+    	    head.insertBefore( script, head.firstChild );
+    	    head.removeChild( script );
 
-	    if ( el.parentNode ) {
-	        el.parentNode.removeChild( el );
-	    }
+    	    if ( el.parentNode ) {
+    	        el.parentNode.removeChild( el );
+    	    }
+        }
 	}
 
 	function changeElementType(el, to) {
@@ -2998,7 +3063,74 @@ return /******/ (function(modules) { // webpackBootstrap
 		return newEl;
 	}
 
+    /*
+    Defaults to holdReady is true so that everything
+    is queued up until the DOMContentLoaded is fired
+    */
+    var holdingReady=true;
+    var holdingReadyAltered=false;
+    var holdingQueueReleased=false;
+    var holdingQueue=[];
+
+    /*
+    if(typeof jQuery != 'undefined' && typeof jQuery.holdReady != 'undefined'){
+        jQuery.holdReady(true);
+    }
+    */
+
+    /*
+    When DOMContentLoaded is fired check to see it the
+    holdingReady has been altered by custom code.
+    If it hasn't then fire holding functions.
+    */
+    function initReadyQueue(){
+      if(!holdingReadyAltered){
+           /*
+           if(typeof jQuery != 'undefined' && typeof jQuery.holdReady != 'undefined'){
+               jQuery.holdReady(false);
+           }
+           */
+           releaseReadyQueue();
+      }
+    };
+
+    function releaseReadyQueue(){
+        holdingQueueReleased=true;
+        holdingReady=false;
+
+        holdingQueue.forEach(function(fn){
+            readyInternal(fn);
+        });
+
+    }
+
+    function holdReady(hold){
+        if(!holdingQueueReleased){
+            holdingReady=hold;
+            holdingReadyAltered=true;
+
+            /*
+            if(typeof jQuery != 'undefined' && typeof jQuery.holdReady != 'undefined'){
+                jQuery.holdReady(hold);
+            }
+            */
+
+            if(!holdingReady){
+                releaseReadyQueue();
+            }
+        }
+    }
+
 	function ready(fn) {
+        if(!holdingQueueReleased){
+             holdingQueue.push(fn);
+        } else {
+            readyInternal(fn);
+	    }
+    }
+
+
+    function readyInternal(fn) {
 	    if(document.readyState != 'loading'){
 	      //IE set the readyState to interative too early
 	      setTimeout(function(){fn(root.Mura);},1);
@@ -3018,6 +3150,7 @@ return /******/ (function(modules) { // webpackBootstrap
      * @memberof Mura
 	 */
 	function get(url,data){
+        data=data || {};
 		return new Promise(function(resolve, reject) {
 			return ajax({
 					type:'get',
@@ -3044,6 +3177,7 @@ return /******/ (function(modules) { // webpackBootstrap
      * @memberof Mura
 	 */
 	function post(url,data){
+        data=data || {};
 		return new Promise(function(resolve, reject) {
 			return ajax({
 					type:'post',
@@ -4274,7 +4408,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
     			function(){
     				find('.mura-object, .mura-async-object').each(function(){
-    					processDisplayObject(this,true).then(resolve);
+    					processDisplayObject(this,Mura.queueObjects).then(resolve);
     				});
     			},
 
@@ -4508,6 +4642,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 		self.removeClass('mura-active');
 		self.removeAttr('data-perm');
+        self.removeAttr('data-runtime');
 		self.removeAttr('draggable');
 
 		if(self.data('object')=='container'){
@@ -4519,6 +4654,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				self.removeClass('mura-active');
 				self.removeAttr('data-perm');
 				self.removeAttr('data-inited');
+                self.removeAttr('data-runtime');
 				self.removeAttr('draggable');
 			});
 
@@ -4845,6 +4981,11 @@ return /******/ (function(modules) { // webpackBootstrap
 	function processDisplayObject(el,queue,rerender,resolveFn){
 
 		var obj=(el.node) ? el : Mura(el);
+
+        if(obj.data('queue') != null){
+            queue=obj.data('queue');
+        }
+
 		el =el.node || el;
 		var self=el;
 		var rendered=!rerender && !(obj.hasClass('mura-async-object') || obj.data('render')=='client'|| obj.data('async'));
@@ -5163,7 +5304,12 @@ return /******/ (function(modules) { // webpackBootstrap
 	}
 
 	function init(config){
-		if(!config.context){
+
+        if(config.endpoint){
+            config.context=config.endpoint;
+        }
+
+        if(!config.context){
 			config.context='';
 		}
 
@@ -5197,6 +5343,10 @@ return /******/ (function(modules) { // webpackBootstrap
 
 		if(typeof config.mobileformat == 'undefined'){
 			config.mobileformat=false;
+		}
+
+        if(typeof config.queueObjects == 'undefined'){
+			config.queueObjects=true;
 		}
 
 		if(typeof config.rootdocumentdomain != 'undefined' && config.rootdocumentdomain != ''){
@@ -5317,6 +5467,8 @@ return /******/ (function(modules) { // webpackBootstrap
 
 		});
 
+        readyInternal(initReadyQueue);
+
 	    return root.Mura
 	}
 
@@ -5361,6 +5513,7 @@ return /******/ (function(modules) { // webpackBootstrap
 			deepExtend:deepExtend,
 			ajax:ajax,
 			changeElementType:changeElementType,
+            setHTMLEditor:setHTMLEditor,
 			each:each,
 			parseHTML:parseHTML,
 			getData:getData,
@@ -5392,7 +5545,8 @@ return /******/ (function(modules) { // webpackBootstrap
 			trim:trim,
 			hashCode:hashCode,
 			DisplayObject:{},
-			displayObjectInstances:{}
+			displayObjectInstances:{},
+            holdReady:holdReady
 			}
 		),
 		//these are here for legacy support
@@ -5498,8 +5652,11 @@ return /******/ (function(modules) { // webpackBootstrap
 				}
 				if( url.match(/\.css\b/) ){
 					return this.loadcss(url,cb);
+				} else if( url.match(/\.html\b/) ){
+					return this.loadimport(url,cb);
+				} else {
+					return this.loadjs(url,cb);
 				}
-				return this.loadjs(url,cb);
 			}
 			,loaded = {}  // will handle already loaded urls
 			,loader  = {
@@ -5613,6 +5770,43 @@ return /******/ (function(modules) { // webpackBootstrap
 					cb && cb();
 					return this;
 				}
+				,loadimport: function(url,attrs,cb){
+
+					if(typeof url == 'object'){
+						if(Array.isArray(url)){
+							return loader.load.apply(this, arguments);
+						} else if(typeof attrs === 'function'){
+							cb=attrs;
+							attrs=url;
+							url=attrs.href
+						} else if (typeof attrs=='string' || (typeof attrs=='object' && Array.isArray(attrs))) {
+							return loader.load.apply(this, arguments);
+						} else {
+							attrs=url;
+							url=attrs.href;
+							cb=undefined;
+						}
+					} else if (typeof attrs=='function' ) {
+						cb = attrs;
+						attrs = {};
+					} else if (typeof attrs=='string' || (typeof attrs=='object' && Array.isArray(attrs))) {
+						return loader.load.apply(this, arguments);
+					}
+
+					var parts = urlParse(url);
+					parts={rel:'import',href:url,id:parts.i}
+
+					if(typeof attrs !=='undefined'){
+						for(var a in attrs){
+							parts[a]=attrs[a];
+						}
+					}
+
+					loaded[parts.href] || appendElmt('link',parts);
+					loaded[parts.href] = true;
+					cb && cb();
+					return this;
+				}
 				,load: function(){
 					var argv=arguments,argc = argv[length];
 					if( argc === 1 && isA(argv[0],Function) ){
@@ -5638,7 +5832,7 @@ return /******/ (function(modules) { // webpackBootstrap
 			}
 			links = D[getElementsByTagName]('link');
 			for(i=0,l=links[length];i<l;i++){
-				(links[i].rel==='stylesheet' || links[i].type==='text/css') && (loaded[links[i].getAttribute('href').replace(/#.*$/,'')]=true);
+				(links[i].rel==='import' || links[i].rel==='stylesheet' || links[i].type==='text/css') && (loaded[links[i].getAttribute('href').replace(/#.*$/,'')]=true);
 			}
 		}
 		//export ljs
@@ -5994,7 +6188,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 
 		/**
-		 * get - Returns element at index of selection
+		 * get - Deprecated: Returns element at index of selection, use item()
 		 *
 		 * @param  {number} index Index of selection
 		 * @return {*}
@@ -6051,6 +6245,23 @@ return /******/ (function(modules) { // webpackBootstrap
 			return mura(this.selection.map( function(el,idx,array){
 				return fn.call(el,el,idx,array);
 			}));
+		},
+
+        /**
+		 * reduce - Returns value from  reduce function
+		 *
+		 * @param  {function} fn Reduce function
+         * @param  {any} initialValue Starting accumulator value
+		 * @return {accumulator}
+		 */
+		reduce:function(fn,initialValue){
+            initialValue=initialValue||0;
+			return this.selection.reduce(
+                function(accumulator,item,idx,array){
+    				return fn.call(item,accumulator,item,idx,array);
+    			},
+                initialValue
+            );
 		},
 
 
@@ -7009,24 +7220,6 @@ return /******/ (function(modules) { // webpackBootstrap
 		},
 
 		/**
-		 * offset - Returns the offset of the first element in selection
-		 *
-		 * @return {object}
-		 */
-		offset:function(){
-			if(!this.selection.length){
-				return this;
-			}
-			var el=this.selection[0];
-			var rect = el.getBoundingClientRect()
-
-			return {
-			  top: rect.top + document.body.scrollTop,
-			  left: rect.left + document.body.scrollLeft
-			};
-		},
-
-		/**
 		 * scrollTop - Returns the scrollTop of the current document
 		 *
 		 * @return {object}
@@ -7574,7 +7767,7 @@ return /******/ (function(modules) { // webpackBootstrap
             var self=this;
 
 			return new Promise(function(resolve,reject){
-				params=Mura.extend(
+                params=Mura.extend(
 					{
 						entityname:self.get('entityname'),
 						method:'findNew',
@@ -7584,8 +7777,8 @@ return /******/ (function(modules) { // webpackBootstrap
 					params
 				);
 
-				Mura.get(params).then(function(item){
-					self.set(item.getAll());
+				Mura.get(Mura.apiEndpoint,params).then(function(resp){
+					self.set(resp.data);
 					if(typeof resolve == 'function'){
 						resolve(self);
 					}
@@ -7605,7 +7798,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		loadBy:function(propertyName,propertyValue,params){
 
 			propertyName=propertyName || 'id';
-			propertyValue=propertyValue || this.get(propertyName);
+			propertyValue=propertyValue || this.get(propertyName) || 'null';
 
 			var self=this;
 
@@ -7623,15 +7816,20 @@ return /******/ (function(modules) { // webpackBootstrap
 			return new Promise(function(resolve,reject){
 				params=Mura.extend(
 					{
-						entityname:self.get('entityname'),
+						entityname:self.get('entityname').toLowerCase(),
 						method:'findQuery',
 						siteid:self.get('siteid'),
-                        '_cacheid':Math.random()
+                        '_cacheid':Math.random(),
 					},
 					params
 				);
 
+                if(params.entityname=='content' || params.entityname=='contentnav'){
+                    params.includeHomePage=1;
+                }
+
 				params[propertyName]=propertyValue;
+
 
 				Mura.findQuery(params).then(function(collection){
 
@@ -7991,18 +8189,17 @@ return /******/ (function(modules) { // webpackBootstrap
 		},
 
 		/**
-		 * getAll - Returns array of all entities way properties
+		 * getAll - Returns object with of all entities and properties
 		 *
-		 * @return {array}
+		 * @return {object}
 		 */
 		getAll:function(){
 			var self=this;
-
 			return Mura.extend(
 				{},
 				self.properties,
 				{
-					items:self.map(function(obj){
+					items:this.properties.items.map(function(obj){
 						return obj.getAll();
 					})
 				}
@@ -8058,6 +8255,23 @@ return /******/ (function(modules) { // webpackBootstrap
 			return collection.set('items',collection.get('items').map( function(item,idx){
 				return fn.call(item,item,idx);
 			}));
+		},
+
+        /**
+		 * reduce - Returns value from  reduce function
+		 *
+		 * @param  {function} fn Reduce function
+         * @param  {any} initialValue Starting accumulator value
+		 * @return {accumulator}
+		 */
+		reduce:function(fn,initialValue){
+            initialValue=initialValue||0;
+			return this.properties.items.reduce(
+                function(accumulator,item,idx,array){
+    				return fn.call(item,accumulator,item,idx,array);
+    			},
+                initialValue
+            );
 		}
 	});
 }));
@@ -8152,6 +8366,17 @@ return /******/ (function(modules) { // webpackBootstrap
 	            return this;
 	        },
 
+			/**
+			 * contentPoolID - Sets items per page
+			 *
+			 * @param  {number} contentPoolID Items per page
+			 * @return {Mura.Feed}              Self
+			 */
+			contentPoolID:function(contentPoolID){
+	            this.queryString+='&contentpoolid=' + encodeURIComponent(contentPoolID);
+				return this;
+	        },
+
 	        /**
 	         * where - Optional method for starting query chain
 	         *
@@ -8208,6 +8433,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	         * @return {Mura.Feed}          Self
 	         */
 	        isEQ:function(criteria){
+				if(typeof criteria == 'undefined' || criteria=='' || criteria==null){
+					criteria='null';
+				}
 	            this.queryString+=encodeURIComponent(criteria);
 				return this;
 	        },
@@ -8219,6 +8447,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	         * @return {Mura.Feed}          Self
 	         */
 	        isNEQ:function(criteria){
+				if(typeof criteria == 'undefined' || criteria=='' || criteria==null){
+					criteria='null';
+				}
 	            this.queryString+='neq^' + encodeURIComponent(criteria);
 				return this;
 	        },
@@ -8230,6 +8461,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	         * @return {Mura.Feed}          Self
 	         */
 	        isLT:function(criteria){
+				if(typeof criteria == 'undefined' || criteria=='' || criteria==null){
+					criteria='null';
+				}
 	            this.queryString+='lt^' + encodeURIComponent(criteria);
 				return this;
 	        },
@@ -8241,6 +8475,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	         * @return {Mura.Feed}          Self
 	         */
 	        isLTE:function(criteria){
+				if(typeof criteria == 'undefined' || criteria=='' || criteria==null){
+					criteria='null';
+				}
 	            this.queryString+='lte^' + encodeURIComponent(criteria);
 				return this;
 	        },
@@ -8252,6 +8489,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	         * @return {Mura.Feed}          Self
 	         */
 	        isGT:function(criteria){
+				if(typeof criteria == 'undefined' || criteria=='' || criteria==null){
+					criteria='null';
+				}
 	            this.queryString+='gt^' + encodeURIComponent(criteria);
 				return this;
 	        },
@@ -8263,6 +8503,9 @@ return /******/ (function(modules) { // webpackBootstrap
 	         * @return {Mura.Feed}          Self
 	         */
 	        isGTE:function(criteria){
+				if(typeof criteria == 'undefined' || criteria=='' || criteria==null){
+					criteria='null';
+				}
 	            this.queryString+='gte^' + encodeURIComponent(criteria);
 				return this;
 	        },
@@ -8383,6 +8626,16 @@ return /******/ (function(modules) { // webpackBootstrap
 			 */
 			itemsPerPage:function(itemsPerPage){
 	            this.queryString+='&itemsPerPage=' + encodeURIComponent(itemsPerPage);
+				return this;
+	        },
+
+			/**
+			 * pageIndex - Sets items per page
+			 *
+			 * @param  {number} pageIndex page to start at
+			 */
+			pageIndex:function(pageIndex){
+	            this.queryString+='&pageIndex=' + encodeURIComponent(pageIndex);
 				return this;
 	        },
 
@@ -8607,7 +8860,7 @@ return /******/ (function(modules) { // webpackBootstrap
 		onAfterRender:function(){},
 		onBeforeRender:function(){},
 		trigger:function(eventName){
-			$eventName=eventName.toLowerCase();
+			var $eventName=eventName.toLowerCase();
 			if(typeof this.context.targetEl != 'undefined'){
 				var obj=mura(this.context.targetEl).closest('.mura-object');
 				if(obj.length && typeof obj.node != 'undefined'){
@@ -8732,7 +8985,11 @@ return /******/ (function(modules) { // webpackBootstrap
 			formInit: false,
 			responsemessage: "",
 			rb: {
-				btnsubmitclass:"form-submit"
+				btnsubmitclass:"form-submit",
+				btnsubmitlabel:"Submit",
+				btnnextlabel:"Next",
+				btnbacklabel:"Back",
+				btncancellabel:"Cancel"
 			},
 			render:function(){
 
@@ -9038,7 +9295,7 @@ return /******/ (function(modules) { // webpackBootstrap
 
 			renderPaging:function() {
 				var self = this;
-				var submitlabel=(typeof self.formJSON.form.formattributes != 'undefined' && typeof self.formJSON.form.formattributes.submitlabel != 'undefined' && self.formJSON.form.formattributes.submitlabel) ? self.formJSON.form.formattributes.submitlabel : 'Submit';
+				var submitlabel=(typeof self.formJSON.form.formattributes != 'undefined' && typeof self.formJSON.form.formattributes.submitlabel != 'undefined' && self.formJSON.form.formattributes.submitlabel) ? self.formJSON.form.formattributes.submitlabel : self.rb.btnsubmitlabel;
 
 				mura(".error-container-" + self.context.objectid,self.context.formEl).empty();
 
@@ -9049,12 +9306,12 @@ return /******/ (function(modules) { // webpackBootstrap
 				}
 				else {
 					if(self.currentpage == 0) {
-						mura(".paging-container-" + self.context.objectid,self.context.formEl).append(Mura.templates['paging']({page:1,label:"Next","class":"form-nav"}));
+						mura(".paging-container-" + self.context.objectid,self.context.formEl).append(Mura.templates['paging']({page:1,label:self.rb.btnnextlabel,"class":"form-nav"}));
 					} else {
-						mura(".paging-container-" + self.context.objectid,self.context.formEl).append(Mura.templates['paging']({page:self.currentpage-1,label:"Back","class":'form-nav'}));
+						mura(".paging-container-" + self.context.objectid,self.context.formEl).append(Mura.templates['paging']({page:self.currentpage-1,label:self.rb.btnbacklabel,"class":'form-nav'}));
 
 						if(self.currentpage+1 < self.formJSON.form.pages.length) {
-							mura(".paging-container-" + self.context.objectid,self.context.formEl).append(Mura.templates['paging']({page:self.currentpage+1,label:"Next","class":'form-nav'}));
+							mura(".paging-container-" + self.context.objectid,self.context.formEl).append(Mura.templates['paging']({page:self.currentpage+1,label:self.rb.btnnextlabel,"class":'form-nav'}));
 						}
 						else {
 							mura(".paging-container-" + self.context.objectid,self.context.formEl).append(Mura.templates['paging']({page:self.currentpage+1,label:submitlabel,"class":'form-submit  btn-primary'}));
@@ -9062,7 +9319,7 @@ return /******/ (function(modules) { // webpackBootstrap
 					}
 
 					if(self.backlink != undefined && self.backlink.length)
-						mura(".paging-container-" + self.context.objectid,self.context.formEl).append(Mura.templates['paging']({page:self.currentpage+1,label:"Cancel","class":'form-cancel btn-primary pull-right'}));
+						mura(".paging-container-" + self.context.objectid,self.context.formEl).append(Mura.templates['paging']({page:self.currentpage+1,label:self.rb.btncancellabel,"class":'form-cancel btn-primary pull-right'}));
 				}
 
 				mura(".form-submit",self.context.formEl).click( function() {
@@ -9442,8 +9699,18 @@ return /******/ (function(modules) { // webpackBootstrap
 						data.saveform=true;
 						data.formid=data.objectid;
 						data.siteid=data.siteid || Mura.siteid;
+						data.contentid=Mura.contentid || '';
+						data.contenthistid=Mura.contenthistid || '';
+						delete data.filename;
+
 					} else {
 						var rawdata=Mura.deepExtend({},self.context,self.data);
+						rawdata.saveform=true;
+						rawdata.formid=rawdata.objectid;
+						rawdata.siteid=rawdata.siteid || Mura.siteid;
+						rawdata.contentid=Mura.contentid || '';
+						rawdata.contenthistid=Mura.contenthistid || '';
+						delete rawdata.filename;
 
 						var data=new FormData();
 
@@ -9455,13 +9722,6 @@ return /******/ (function(modules) { // webpackBootstrap
 									data.append(p,rawdata[p]);
 								}
 							}
-						}
-
-						data.append('saveform',true);
-						data.append('formid',rawdata.objectid);
-
-						if(!data.has('siteid')){
-							data.append('siteid',rawdata.siteid || Mura.siteid);
 						}
 					}
 
@@ -9967,7 +10227,7 @@ return /******/ (function(modules) { // webpackBootstrap
 				Mura.Handlebars.registerHelper('commonInputAttributes',function() {
 					//id, class, title, size
 					var escapeExpression=Mura.Handlebars.escapeExpression;
-
+					
 					if(typeof this.fieldtype != 'undefined' && this.fieldtype.fieldtype=='file'){
 						var returnString='name="' + escapeExpression(this.name) + '_attachment"';
 					} else {
@@ -10254,7 +10514,7 @@ this["mura"]["templates"]["file"] = this.mura.Handlebars.template({"1":function(
     + alias4(((helper = (helper = helpers.name || (depth0 != null ? depth0.name : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"name","hash":{},"data":data}) : helper)))
     + "-container\">\r\n	<label for=\""
     + alias4(((helper = (helper = helpers.name || (depth0 != null ? depth0.name : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"name","hash":{},"data":data}) : helper)))
-    + "\">"
+    + "_attachment\">"
     + alias4(((helper = (helper = helpers.label || (depth0 != null ? depth0.label : depth0)) != null ? helper : alias2),(typeof helper === alias3 ? helper.call(alias1,{"name":"label","hash":{},"data":data}) : helper)))
     + ((stack1 = helpers["if"].call(alias1,(depth0 != null ? depth0.isrequired : depth0),{"name":"if","hash":{},"fn":container.program(1, data, 0),"inverse":container.noop,"data":data})) != null ? stack1 : "")
     + "</label>\r\n	<input type=\"file\" "
